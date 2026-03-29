@@ -33,6 +33,6 @@ services:
       - .env
     volumes:
       - "./.env:/app/var/.env"
-      - "./storage:/app/storage"
-      - "./themes:/app/themes"
-      - "./extensions:/app/extensions"
+      - "./docker-data/storage:/app/storage"
+      - "./docker-data/themes:/app/themes"
+      - "./docker-data/extensions:/app/extensions"
