@@ -18,20 +18,32 @@ class LocaleSwitch extends Component
     {
         $this->currentLocale = session('locale', config('app.locale'));
         $this->currentCurrency = session('currency', config('settings.default_currency'));
-        $this->currencies = Currency::all()->map(fn ($currency) => [
+        $this->currencies = Currency::query()->where('code', 'USD')->get()->map(fn ($currency) => [
             'value' => $currency->code,
             'label' => $currency->name,
         ])->values()->toArray();
 
-        if ((count($this->currencies) <= 1 || Cart::items()->count() > 0) && count(config('settings.allowed_languages', [])) <= 1) {
+        if (!collect($this->currencies)->pluck('value')->contains($this->currentCurrency) && count($this->currencies) > 0) {
+            $this->currentCurrency = $this->currencies[0]['value'];
+            session(['currency' => $this->currentCurrency]);
+        }
+
+        if (!in_array($this->currentLocale, $this->allowedLocales(), true)) {
+            $this->currentLocale = 'en';
+            session(['locale' => $this->currentLocale]);
+            app()->setLocale($this->currentLocale);
+        }
+
+        if ((count($this->currencies) <= 1 || Cart::items()->count() > 0) && count($this->allowedLocales()) <= 1) {
             $this->skipRender();
         }
     }
 
     public function updatedCurrentCurrency($currency)
     {
+        $allowedCurrencies = collect($this->currencies)->pluck('value')->all();
         $this->validate([
-            'currentCurrency' => 'required|exists:currencies,code',
+            'currentCurrency' => 'required|in:' . implode(',', $allowedCurrencies),
         ]);
         if (Cart::items()->count() > 0) {
             $this->notify('You cannot change the currency while there are items in the cart.', 'error');
@@ -51,7 +63,7 @@ class LocaleSwitch extends Component
 
     public function updatedCurrentLocale($locale)
     {
-        if (!in_array($locale, config('settings.allowed_languages', []))) {
+        if (!in_array($locale, $this->allowedLocales(), true)) {
             $this->notify('The selected language is not available.', 'error');
 
             return;
@@ -65,8 +77,17 @@ class LocaleSwitch extends Component
 
     public function render()
     {
-        $locales = config('settings.allowed_languages');
+        $locales = $this->allowedLocales();
+        $localeLabels = [
+            'en' => 'English',
+            'zh_CN' => '中文',
+        ];
 
-        return view('components.locale-switch', compact('locales'));
+        return view('components.locale-switch', compact('locales', 'localeLabels'));
+    }
+
+    protected function allowedLocales(): array
+    {
+        return ['en', 'zh_CN'];
     }
 }

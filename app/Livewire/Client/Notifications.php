@@ -15,6 +15,16 @@ class Notifications extends Component
 {
     public $preferences = [];
 
+    private function preferenceLabel(NotificationTemplate $notification): string
+    {
+        $translationKey = 'notification_preferences.' . $notification->key;
+        $translated = __($translationKey);
+
+        return $translated === $translationKey
+            ? $notification->edit_preference_message
+            : $translated;
+    }
+
     public function mount()
     {
         foreach ($this->notifications as $notification) {
@@ -129,7 +139,7 @@ class Notifications extends Component
                 return (object) [
                     'id' => $notification->id,
                     'key' => $notification->key,
-                    'name' => $notification->edit_preference_message,
+                    'name' => $this->preferenceLabel($notification),
                     'mail_controllable' => $notification->isEmailUserControllable(),
                     'in_app_controllable' => $notification->isInAppUserControllable(),
                     'mail_enabled' => $notification->isEnabledForPreference($userPreferences->firstWhere('notification_template_id', $notification->id), 'mail'),
